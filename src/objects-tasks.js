@@ -405,32 +405,141 @@ function group(array, keySelector, valueSelector) {
  */
 
 const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
+  order: [
+    'element',
+    'id',
+    'classes',
+    'attribute',
+    'pseudoClasses',
+    'pseudoElement',
+  ],
+  data: {
+    element: null,
+    id: null,
+    classes: [],
+    attribute: null,
+    pseudoClasses: [],
+    pseudoElement: null,
+  },
+  makeInstance() {
+    const newInstance = Object.create(this);
+    newInstance.data = { ...this.data };
+
+    this.data = {
+      element: null,
+      id: null,
+      classes: [],
+      attribute: null,
+      pseudoClasses: [],
+      pseudoElement: null,
+    };
+
+    return newInstance;
+  },
+  raiseIfExists(value) {
+    if (value) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more then one time inside the selector'
+      );
+    }
+  },
+  raiseIfInvalidOrder(key) {
+    const index = this.order.indexOf(key);
+
+    for (let i = index + 1; i < this.order.length; i += 1) {
+      const value = this.data[this.order[i]];
+
+      if (Array.isArray(value) && value.length) {
+        throw new Error(
+          'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element'
+        );
+      }
+
+      if (!Array.isArray(value) && value) {
+        throw new Error(
+          'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element'
+        );
+      }
+    }
+  },
+  element(value) {
+    this.raiseIfExists(this.data.element);
+    this.raiseIfInvalidOrder('element');
+    this.data.element = value;
+    return this.makeInstance();
   },
 
-  id(/* value */) {
-    throw new Error('Not implemented');
+  id(value) {
+    this.raiseIfExists(this.data.id);
+    this.raiseIfInvalidOrder('id');
+    this.data.id = value;
+    return this.makeInstance();
   },
 
-  class(/* value */) {
-    throw new Error('Not implemented');
+  class(value) {
+    this.raiseIfInvalidOrder('classes');
+    this.data.classes.push(value);
+    return this.makeInstance();
   },
 
-  attr(/* value */) {
-    throw new Error('Not implemented');
+  attr(value) {
+    this.raiseIfInvalidOrder('attribute');
+    this.data.attribute = value;
+    return this.makeInstance();
   },
 
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
+  pseudoClass(value) {
+    this.raiseIfInvalidOrder('pseudoClasses');
+    this.data.pseudoClasses.push(value);
+    return this.makeInstance();
   },
 
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
+  pseudoElement(value) {
+    this.raiseIfExists(this.data.pseudoElement);
+    this.raiseIfInvalidOrder('pseudoElement');
+    this.data.pseudoElement = value;
+    return this.makeInstance();
   },
 
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
+  combine(selector1, combinator, selector2) {
+    const string1 = selector1.stringify();
+    const string2 =
+      typeof selector2 === 'string' ? selector2 : selector2.stringify();
+
+    return {
+      stringify() {
+        return `${string1} ${combinator} ${string2}`;
+      },
+    };
+  },
+  stringify() {
+    let selector = '';
+
+    if (this.data.element) {
+      selector += this.data.element;
+    }
+
+    if (this.data.attribute) {
+      selector += `[${this.data.attribute}]`;
+    }
+
+    this.data.pseudoClasses.forEach((value) => {
+      selector += `:${value}`;
+    });
+
+    if (this.data.pseudoElement) {
+      selector += `::${this.data.pseudoElement}`;
+    }
+
+    if (this.data.id) {
+      selector += `#${this.data.id}`;
+    }
+
+    this.data.classes.forEach((value) => {
+      selector += `.${value}`;
+    });
+
+    return selector;
   },
 };
 
